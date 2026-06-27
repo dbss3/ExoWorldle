@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExoWorldle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="heroTopRow">
+        <button id="helperToggleBtn" type="button">Helper</button>
+        <button id="modeToggleBtn" type="button">Mode: Hard</button>
+      </div>
+      <h1>ExoWorldle</h1>
+      <p class="tagline">Daily game to guess the mystery planet</p>
+      <p class="meta" id="dayMeta">Loading daily puzzle...</p>
+      <p class="remaining" id="remainingCount">Planets remaining: --</p>
+    </header>
+
+    <section id="helperPanel" class="helperWrap hidden">
+      <h2 class="boardTitle">Helper Plots</h2>
+      <p id="helperSelection" class="helperSelection">Click a point to show planet name.</p>
+      <div class="helperGrid">
+        <svg id="helperPeriodMass" viewBox="0 0 520 320" aria-label="Orbital period versus mass helper plot"></svg>
+        <svg id="helperMassRadius" viewBox="0 0 520 320" aria-label="Mass versus radius helper plot"></svg>
+        <svg id="helperTempGravity" viewBox="0 0 520 320" aria-label="Temperature versus surface gravity helper plot"></svg>
+      </div>
+    </section>
+
+    <section class="graphicsWrap">
+      <div class="targetBanner">
+        <p class="targetLabel">Target Planet</p>
+        <p class="targetMask" id="targetMask">_</p>
+      </div>
+
+      <div class="vizWrap">
+        <svg id="radiusViz" class="radiusViz" viewBox="0 0 340 340" aria-label="Planet radius visualization"></svg>
+        <svg id="tempViz" class="tempViz" viewBox="0 0 220 380" aria-label="Equilibrium temperature visualization"></svg>
+        <svg id="massViz" class="massViz vizFull" viewBox="0 0 700 220" aria-label="Planet mass and period limits visualization"></svg>
+        <div class="vizFull starsInViz">
+          <h2 class="boardTitle">Host Stellar Type</h2>
+          <div id="stellarChips" class="stellarChips" aria-label="Stellar type guess status"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <label for="guessInput">Planet guess</label>
+      <div class="inputRow">
+        <input id="guessInput" placeholder="Try: 55 Cnc e" autocomplete="off" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false">
+        <button id="guessBtn">Guess</button>
+        <button id="hintBtn" type="button">Hint</button>
+      </div>
+      <div id="suggestions" class="suggestions" role="listbox" aria-label="Planet suggestions"></div>
+      <p class="feedback" id="feedback"></p>
+    </section>
+
+    <section class="statusBar">
+      <p id="result"></p>
+    </section>
+
+    <section class="historyWrap">
+      <div class="historyTopBar">
+        <h2 class="boardTitle">Guesses</h2>
+        <p id="attempts" class="attemptsPill">Attempts: 0 / 6</p>
+      </div>
+      <div id="history" class="history"></div>
+    </section>
+  </main>
+
+  <div id="endModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+    <div class="modalCard">
+      <h2 id="endTitle">Puzzle Complete</h2>
+      <p id="endMessage"></p>
+      <pre id="shareGrid" class="shareGrid"></pre>
+      <div class="modalActions">
+        <button id="copyShareBtn" type="button">Copy Share</button>
+        <button id="closeModalBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./game.js" defer></script>
+</body>
+</html>
