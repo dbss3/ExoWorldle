@@ -59,7 +59,7 @@ let currentSuggestions = [];
 let endModalShown = false;
 let hintRevealed = false;
 let featuredPool = [];
-let gameMode = "hard";
+let gameMode = "easy";
 
 function getUtcDayNumber(date = new Date()) {
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);

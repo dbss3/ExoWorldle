@@ -485,3 +485,92 @@ button:hover {
     text-align: center;
   }
 }
+
+@media (max-width: 760px) {
+  .app {
+    padding: 14px 10px 20px;
+  }
+
+  .heroTopRow {
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  #helperToggleBtn,
+  #modeToggleBtn {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.9rem;
+  }
+
+  .controls,
+  .graphicsWrap,
+  .helperWrap,
+  .historyWrap,
+  .statusBar {
+    margin-top: 12px;
+    padding: 10px;
+  }
+
+  .inputRow {
+    grid-template-columns: 1fr;
+  }
+
+  .inputRow button {
+    width: 100%;
+  }
+
+  .vizWrap {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .radiusViz,
+  .tempViz,
+  .massViz {
+    width: 100%;
+  }
+
+  .historyHeader {
+    display: none;
+  }
+
+  .historyRow {
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid rgba(234, 244, 255, 0.16);
+    border-radius: 10px;
+    background: rgba(5, 14, 25, 0.56);
+  }
+
+  .historyCell {
+    min-height: 0;
+    padding: 8px 10px;
+    justify-content: space-between;
+    text-align: right;
+    font-size: 0.84rem;
+  }
+
+  .historyCell::before {
+    content: attr(data-label);
+    margin-right: 10px;
+    color: #dbeafe;
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+
+  .historyCell.name {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .historyCell.name::before {
+    content: "Guess";
+  }
+}
