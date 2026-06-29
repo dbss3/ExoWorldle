@@ -466,6 +466,15 @@ button:hover {
   justify-content: flex-end;
 }
 
+.attribution {
+  margin-top: 20px;
+  padding-bottom: 16px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
 @media (max-width: 900px) {
   .helperGrid {
     grid-template-columns: 1fr;
