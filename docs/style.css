@@ -524,11 +524,24 @@ button:hover {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-
   .radiusViz,
-  .tempViz,
+
   .massViz {
+
     width: 100%;
+
+  }
+
+  .tempViz {
+
+    width: 70%;
+
+    max-width: 140px;
+
+    margin: 0 auto;
+
+    display: block;
+
   }
 
   .historyHeader {
