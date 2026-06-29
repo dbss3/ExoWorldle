@@ -1660,7 +1660,7 @@ function renderMassViz() {
   });
   periodTitle.textContent = "Orbital Period";
   const tickExponents = [];
-  for (let p = Math.floor(Math.log10(periodAxisMin)); p <= Math.ceil(Math.log10(periodAxisMax)); p += 1) {
+  for (let p = Math.floor(Math.log10(periodAxisMin)); p <= Math.ceil(Math.log10(periodAxisMax)); p += 2) {
     tickExponents.push(p);
   }
   tickExponents.forEach((exp) => {
