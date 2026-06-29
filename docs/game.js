@@ -66,7 +66,7 @@ function getUtcDayNumber(date = new Date()) {
 }
 
 function deterministicIndexForDay(day, length) {
-  const mixed = (day * 1103516245 + 12345) >>> 0;
+  const mixed = (day * 1103516245 + 12346) >>> 0;
   return mixed % length;
 }
 
