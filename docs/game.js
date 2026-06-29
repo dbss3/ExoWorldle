@@ -9,7 +9,7 @@ const REF_RADII_RJ = [
   { name: "Jupiter", rj: 1.0, color: "#f9a8d4" }
 ];
 const HELPER_DOT_RADIUS = 3.6;
-const SINGLE_HINT_TEXT = "Hint - Detection method: Transit (dummy).";
+const SINGLE_HINT_TEXT = "Hints are not yet implemented, sorry. Good luck!";
 
 const PROPERTY_CONFIG = [
   { key: "Mp", label: "Mass", unit: "Mj", tolerance: TOL, mode: "numeric" },
@@ -66,7 +66,7 @@ function getUtcDayNumber(date = new Date()) {
 }
 
 function deterministicIndexForDay(day, length) {
-  const mixed = (day * 1103515245 + 12345) >>> 0;
+  const mixed = (day * 1103516245 + 12345) >>> 0;
   return mixed % length;
 }
 
