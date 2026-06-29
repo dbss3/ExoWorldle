@@ -1475,6 +1475,11 @@ function renderTemperatureViz() {
 function renderMassViz() {
   massVizEl.innerHTML = "";
 
+  const isMobile = window.innerWidth < 760;
+  const VW = isMobile ? 340 : 700;
+  const VH = isMobile ? 240 : 220;
+  massVizEl.setAttribute("viewBox", `0 0 ${VW} ${VH}`);
+
   const ranges = computeRanges();
   const massRange = ranges.Mp;
   const masses = dataset
@@ -1490,11 +1495,20 @@ function renderMassViz() {
   const periodAxisMin = periods.length ? Math.min(...periods) : 0.1;
   const periodAxisMax = periods.length ? Math.max(...periods) : 100;
 
-  const left = 70;
-  const right = 650;
-  const beamY = 52;
-  const panY = 84;
+  const left = isMobile ? 20 : 70;
+  const right = isMobile ? 320 : 650;
   const width = right - left;
+  const beamY = isMobile ? 48 : 52;
+  const panY = isMobile ? 78 : 84;
+  const xLeftPan = isMobile ? 80 : 220;
+  const xRightPan = isMobile ? 260 : 480;
+  const fulcrumX = (xLeftPan + xRightPan) / 2;
+  const triHalfW = isMobile ? 12 : 14;
+  const periodY = isMobile ? 154 : 170;
+  const periodTitleY = isMobile ? 130 : 146;
+  const centerX = VW / 2;
+  const titleFontSize = isMobile ? 13 : 14;
+  const panFontSize = isMobile ? 9 : 10;
 
   const xForMass = (mass) => {
     const m = Math.max(massAxisMin, Math.min(massAxisMax, mass));
@@ -1510,10 +1524,6 @@ function renderMassViz() {
   const lowerBoundMass = massRange.min !== null ? massRange.min : massAxisMin;
   const upperBoundMass = massRange.max !== null ? massRange.max : massAxisMax;
 
-  const xLeftPan = 220;
-  const xRightPan = 480;
-  const fulcrumX = (xLeftPan + xRightPan) / 2;
-
   const beam = svgEl("line", {
     x1: xLeftPan,
     y1: beamY,
@@ -1524,7 +1534,7 @@ function renderMassViz() {
     "stroke-linecap": "round"
   });
   const fulcrum = svgEl("polygon", {
-    points: `${fulcrumX - 14},86 ${fulcrumX + 14},86 ${fulcrumX},56`,
+    points: `${fulcrumX - triHalfW},${beamY + 34} ${fulcrumX + triHalfW},${beamY + 34} ${fulcrumX},${beamY + 4}`,
     fill: "rgba(148, 163, 184, 0.85)",
     stroke: "rgba(203, 213, 225, 0.95)",
     "stroke-width": 2
@@ -1551,28 +1561,52 @@ function renderMassViz() {
       stroke: "rgba(34, 197, 94, 0.95)",
       "stroke-width": 1
     });
-    const txt = svgEl("text", {
-      x,
-      y: panY + 24,
-      fill: "#86efac",
-      "font-size": 10,
-      "text-anchor": "middle",
-      "font-family": "Space Mono, monospace"
-    });
-    txt.textContent = value === null ? `${label}: --` : `${label}: ${formatSci(value)} Mj`;
     massVizEl.appendChild(hanger);
     massVizEl.appendChild(pan);
-    massVizEl.appendChild(txt);
+
+    if (isMobile) {
+      const txt1 = svgEl("text", {
+        x,
+        y: panY + 18,
+        fill: "#86efac",
+        "font-size": panFontSize,
+        "text-anchor": "middle",
+        "font-family": "Space Mono, monospace"
+      });
+      txt1.textContent = label;
+      const txt2 = svgEl("text", {
+        x,
+        y: panY + 30,
+        fill: "#86efac",
+        "font-size": panFontSize,
+        "text-anchor": "middle",
+        "font-family": "Space Mono, monospace"
+      });
+      txt2.textContent = value === null ? "--" : `${formatSci(value)} Mj`;
+      massVizEl.appendChild(txt1);
+      massVizEl.appendChild(txt2);
+    } else {
+      const txt = svgEl("text", {
+        x,
+        y: panY + 24,
+        fill: "#86efac",
+        "font-size": panFontSize,
+        "text-anchor": "middle",
+        "font-family": "Space Mono, monospace"
+      });
+      txt.textContent = value === null ? `${label}: --` : `${label}: ${formatSci(value)} Mj`;
+      massVizEl.appendChild(txt);
+    }
   };
 
   drawPan(xLeftPan, "Lower Bound", lowerBoundMass);
   drawPan(xRightPan, "Upper Bound", upperBoundMass);
 
   const massTitle = svgEl("text", {
-    x: 350,
-    y: 24,
+    x: centerX,
+    y: isMobile ? 20 : 24,
     fill: "#dbeafe",
-    "font-size": 14,
+    "font-size": titleFontSize,
     "text-anchor": "middle",
     "font-family": "Space Mono, monospace"
   });
@@ -1581,7 +1615,6 @@ function renderMassViz() {
 
   const periodMin = periodRange.min !== null ? periodRange.min : periodAxisMin;
   const periodMax = periodRange.max !== null ? periodRange.max : periodAxisMax;
-  const periodY = 170;
 
   const periodBase = svgEl("line", {
     x1: left,
@@ -1618,10 +1651,10 @@ function renderMassViz() {
     "stroke-width": 2
   });
   const periodTitle = svgEl("text", {
-    x: 350,
-    y: 146,
+    x: centerX,
+    y: periodTitleY,
     fill: "#dbeafe",
-    "font-size": 14,
+    "font-size": titleFontSize,
     "text-anchor": "middle",
     "font-family": "Space Mono, monospace"
   });
@@ -1826,6 +1859,14 @@ async function init() {
   });
 
   guessInputEl.addEventListener("focus", updateSuggestions);
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      renderMassViz();
+    }, 150);
+  });
 }
 
 init();

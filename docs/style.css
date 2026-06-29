@@ -524,24 +524,28 @@ button:hover {
     grid-template-columns: 1fr;
     gap: 8px;
   }
+
   .radiusViz,
-
   .massViz {
-
     width: 100%;
-
   }
 
   .tempViz {
-
     width: 70%;
-
-    max-width: 140px;
-
+    max-width: 160px;
     margin: 0 auto;
-
     display: block;
+  }
 
+  .stellarChips {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+
+  .stellarChip {
+    min-height: 40px;
+    font-size: 0.9rem;
+    padding: 4px 2px;
   }
 
   .historyHeader {
