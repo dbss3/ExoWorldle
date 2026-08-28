@@ -3,89 +3,942 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ExoWorldle</title>
+  <title>DeepSkyGuessr</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080c14; --surface: #0f172a; --surface2: #1e293b;
+      --border: rgba(148,163,184,0.18); --text: #e2e8f0; --muted: #94a3b8;
+      --accent: #38bdf8; --green: #22c55e; --red: #f43f5e; --gold: #fbbf24;
+      --font-sans: 'Space Grotesk', sans-serif; --font-mono: 'Space Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px; border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0; gap: 12px; flex-wrap: wrap;
+    }
+    header h1 { font-family: var(--font-mono); font-size: 1.4rem; letter-spacing: 0.04em; color: var(--accent); }
+    .header-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+    #timerDisplay { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; color: var(--muted); }
+    #timerDisplay.running { color: var(--green); }
+    #progressLabel { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+    main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 16px; max-width: 1600px; width: 100%; margin: 0 auto; }
+    .hidden { display: none !important; }
+
+    /* ── Setup Screen ── */
+    #setupScreen { max-width: 680px; margin: 0 auto; width: 100%; }
+    .setup-title { font-family: var(--font-mono); font-size: 1.3rem; color: var(--accent); margin-bottom: 20px; }
+    .setup-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 20px; margin-bottom: 14px;
+    }
+    .setup-card-label {
+      font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display: block;
+    }
+    /* Count selector */
+    .count-row { display: flex; gap: 8px; }
+    .count-btn {
+      flex: 1; padding: 8px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 1rem;
+      cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .count-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .count-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,0.08); }
+    /* Type checkboxes */
+    .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .type-check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .type-check input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+    .type-check span { font-size: 0.85rem; color: var(--text); }
+    /* Magnitude slider */
+    .mag-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .mag-row input[type="range"] { flex: 1; accent-color: var(--accent); min-width: 100px; }
+    .mag-value { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 60px; }
+    .mag-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px; }
+    .mag-toggle input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+    /* Pool info */
+    #poolInfo { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); margin-top: 10px; }
+    #poolInfo.warn { color: var(--gold); }
+    /* Start button */
+    .start-btn {
+      width: 100%; padding: 14px; background: var(--accent); color: #0f172a;
+      border: none; border-radius: 8px; font-family: var(--font-mono); font-size: 1rem;
+      font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 4px;
+    }
+    .start-btn:hover:not(:disabled) { background: #0ea5e9; transform: translateY(-1px); }
+    .start-btn:disabled { background: var(--surface2); color: var(--muted); cursor: default; transform: none; }
+
+    /* ── Game Screen ── */
+    .game-layout { display: grid; grid-template-columns: 400px 1fr; gap: 16px; flex: 1; min-height: 0; }
+    .mystery-panel { display: flex; flex-direction: column; gap: 8px; }
+    .panel-label { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+    /* Image wrap */
+    .image-wrap {
+      position: relative; background: #000; border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; aspect-ratio: 1;
+    }
+    #aladin-mystery { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+    .mystery-overlay { position: absolute; inset: 0; z-index: 10; cursor: default; }
+    /* Loader */
+    #imgLoader {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #000; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem;
+      flex-direction: column; gap: 12px; z-index: 20;
+    }
+    #imgLoader { transition: opacity 0.5s; }
+    #imgLoader.hidden { display: flex !important; opacity: 0; pointer-events: none; }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Hints */
+    .hint-row { display: flex; gap: 6px; }
+    .hint-btn {
+      flex: 1; padding: 7px 6px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 0.68rem;
+      cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .hint-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,0.06); }
+    .hint-btn:disabled { opacity: 0.45; cursor: default; }
+    .hint-btn.used { border-color: var(--gold); color: var(--gold); }
+    #hintOutput { font-size: 0.8rem; color: var(--gold); font-family: var(--font-mono); min-height: 1.2em; padding: 2px; }
+    #dscImageHint { margin-top: 4px; }
+    #dscImageHint img { width: 100%; border-radius: 6px; border: 1px solid var(--border); display: block; }
+
+    /* Sky map panel */
+    .skymap-panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    .map-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .toggle-btn {
+      padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .toggle-btn.on { border-color: var(--green); color: var(--green); }
+    #aladin-lite-div { flex: 1; min-height: 400px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: crosshair; }
+    #pinStatus { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); padding: 2px; }
+    #pinStatus.has-pin { color: var(--green); }
+
+    /* Controls */
+    .controls-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .submit-btn {
+      padding: 12px 32px; background: var(--green); color: #0f172a; border: none;
+      border-radius: 6px; font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: background 0.2s, transform 0.1s; letter-spacing: 0.03em;
+    }
+    .submit-btn:hover:not(:disabled) { background: #16a34a; transform: translateY(-1px); }
+    .submit-btn:disabled { background: var(--surface2); color: var(--muted); cursor: default; transform: none; }
+
+    /* ── Round Result Panel ── */
+    #roundResultPanel {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px 24px; margin-top: 4px;
+    }
+    .rr-header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .rr-score { font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: var(--gold); }
+    .rr-name  { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .rr-running { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+    .score-bar-wrap { background: var(--surface2); border-radius: 4px; height: 7px; overflow: hidden; margin-bottom: 14px; }
+    .score-bar { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.8s ease-out; }
+    .rr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .rr-stat { background: var(--surface2); border-radius: 6px; padding: 8px 12px; }
+    .stat-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); display: block; }
+    .stat-value { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--text); }
+    .rr-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .dsc-link { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); text-decoration: none; }
+    .dsc-link:hover { text-decoration: underline; }
+    .next-btn {
+      padding: 10px 24px; background: var(--accent); color: #0f172a; border: none;
+      border-radius: 6px; font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700;
+      cursor: pointer; transition: background 0.2s; margin-left: auto;
+    }
+    .next-btn:hover { background: #0ea5e9; }
+
+    /* ── Final Screen ── */
+    #finalScreen { max-width: 900px; margin: 0 auto; width: 100%; }
+    .final-header { text-align: center; margin-bottom: 24px; }
+    .final-title { font-family: var(--font-mono); font-size: 1.1rem; color: var(--muted); margin-bottom: 6px; }
+    .final-score-big { font-family: var(--font-mono); font-size: 3rem; font-weight: 700; color: var(--gold); }
+    .final-score-max { font-family: var(--font-mono); font-size: 1rem; color: var(--muted); }
+    .final-stars { font-size: 1.8rem; margin: 6px 0; }
+    .final-bar-wrap { background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; max-width: 400px; margin: 10px auto 24px; }
+    .final-bar { height: 100%; background: var(--gold); border-radius: 4px; transition: width 1s ease-out; }
+    .final-rounds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .final-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .final-card-img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #000; display: block; }
+    .final-card-img-placeholder { width: 100%; aspect-ratio: 1; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.75rem; font-family: var(--font-mono); }
+    .final-card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .final-card-round { font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+    .final-card-name { font-weight: 700; font-size: 0.9rem; color: var(--accent); }
+    .final-card-id { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+    .final-card-score { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; color: var(--gold); margin-top: 4px; }
+    .final-card-dist { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+    .final-card-link { font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); text-decoration: none; margin-top: 6px; }
+    .final-card-link:hover { text-decoration: underline; }
+    .final-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .action-btn {
+      padding: 10px 24px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: border-color 0.2s;
+    }
+    .action-btn:hover { border-color: var(--accent); }
+    .action-btn.primary { background: var(--accent); color: #0f172a; border-color: var(--accent); font-weight: 700; }
+    .action-btn.primary:hover { background: #0ea5e9; }
+
+    footer { text-align: center; padding: 10px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); font-family: var(--font-mono); }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .game-layout { grid-template-columns: 1fr; }
+      .image-wrap { max-height: 300px; }
+      #aladin-lite-div { min-height: 320px; }
+      header h1 { font-size: 1.1rem; }
+    }
+    @media (max-width: 480px) {
+      header { padding: 8px 12px; }
+      main { padding: 10px; gap: 10px; }
+      .rr-score { font-size: 1.7rem; }
+      .final-score-big { font-size: 2.2rem; }
+    }
+  </style>
 </head>
 <body>
-  <main class="app">
-    <header class="hero">
-      <div class="heroTopRow">
-        <button id="helperToggleBtn" type="button">Helper</button>
-        <button id="modeToggleBtn" type="button">Mode: Hard</button>
-      </div>
-      <h1>ExoWorldle</h1>
-      <p class="tagline">Daily game to guess the mystery planet</p>
-      <p class="meta" id="dayMeta">Loading daily puzzle...</p>
-      <p class="remaining" id="remainingCount">Planets remaining: --</p>
-    </header>
 
-    <section id="helperPanel" class="helperWrap hidden">
-      <h2 class="boardTitle">Helper Plots</h2>
-      <p id="helperSelection" class="helperSelection">Click a point to show planet name.</p>
-      <div class="helperGrid">
-        <svg id="helperPeriodMass" viewBox="0 0 520 320" aria-label="Orbital period versus mass helper plot"></svg>
-        <svg id="helperMassRadius" viewBox="0 0 520 320" aria-label="Mass versus radius helper plot"></svg>
-        <svg id="helperTempGravity" viewBox="0 0 520 320" aria-label="Temperature versus surface gravity helper plot"></svg>
-      </div>
-    </section>
+<header>
+  <div>
+    <h1>DeepSkyGuessr</h1>
+    <span class="header-sub" id="headerSub">A GeoGuessr for the night sky</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:20px">
+    <span id="progressLabel" class="hidden"></span>
+    <div id="timerDisplay">0:00</div>
+  </div>
+</header>
 
-    <section class="graphicsWrap">
-      <div class="targetBanner">
-        <p class="targetLabel">Target Planet</p>
-        <p class="targetMask" id="targetMask">_</p>
-      </div>
+<main>
 
-      <div class="vizWrap">
-        <svg id="radiusViz" class="radiusViz" viewBox="0 0 340 340" aria-label="Planet radius visualization"></svg>
-        <svg id="tempViz" class="tempViz" viewBox="0 0 220 380" aria-label="Equilibrium temperature visualization"></svg>
-        <svg id="massViz" class="massViz vizFull" viewBox="0 0 700 220" aria-label="Planet mass and period limits visualization"></svg>
-        <div class="vizFull starsInViz">
-          <h2 class="boardTitle">Host Stellar Type</h2>
-          <div id="stellarChips" class="stellarChips" aria-label="Stellar type guess status"></div>
-        </div>
-      </div>
-    </section>
+  <!-- ── Setup Screen ── -->
+  <section id="setupScreen">
+    <p class="setup-title">Configure Your Game</p>
 
-    <section class="controls">
-      <label for="guessInput">Planet guess</label>
-      <div class="inputRow">
-        <input id="guessInput" placeholder="Try: HD 209458 b" autocomplete="off" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false">
-        <button id="guessBtn">Guess</button>
-        <button id="hintBtn" type="button">Hint</button>
-      </div>
-      <div id="suggestions" class="suggestions" role="listbox" aria-label="Planet suggestions"></div>
-      <p class="feedback" id="feedback"></p>
-    </section>
-
-    <section class="statusBar">
-      <p id="result"></p>
-    </section>
-
-    <section class="historyWrap">
-      <div class="historyTopBar">
-        <h2 class="boardTitle">Guesses</h2>
-        <p id="attempts" class="attemptsPill">Attempts: 0 / 6</p>
-      </div>
-      <div id="history" class="history"></div>
-    </section>
-  </main>
-
-  <div id="endModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="endTitle">
-    <div class="modalCard">
-      <h2 id="endTitle">Puzzle Complete</h2>
-      <p id="endMessage"></p>
-      <pre id="shareGrid" class="shareGrid"></pre>
-      <div class="modalActions">
-        <button id="copyShareBtn" type="button">Copy Share</button>
-        <button id="closeModalBtn" type="button">Close</button>
+    <div class="setup-card">
+      <span class="setup-card-label">Objects per game</span>
+      <div class="count-row">
+        <button class="count-btn" data-count="1">1</button>
+        <button class="count-btn" data-count="3">3</button>
+        <button class="count-btn selected" data-count="5">5</button>
+        <button class="count-btn" data-count="10">10</button>
       </div>
     </div>
-  </div>
 
-  <script src="./game.js" defer></script>
-  <footer class="attribution">Data taken from the NASA Exoplanet Archive and ExoMAST</footer>
+    <div class="setup-card">
+      <span class="setup-card-label">Object types</span>
+      <div class="type-grid" id="typeGrid">
+        <!-- populated by JS from dso.json -->
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <label class="mag-toggle">
+        <input type="checkbox" id="magEnabled">
+        <span style="font-size:0.85rem">Limit by apparent magnitude</span>
+      </label>
+      <div class="mag-row" id="magRow" style="display:none">
+        <span style="font-size:0.82rem;color:var(--muted)">Brighter than</span>
+        <input type="range" id="magSlider" min="4" max="14" step="0.5" value="10">
+        <span class="mag-value" id="magValue">≤ 10.0</span>
+      </div>
+    </div>
+
+    <div id="poolInfo"></div>
+    <button class="start-btn" id="startBtn">Start Game</button>
+  </section>
+
+  <!-- ── Game Screen ── -->
+  <section id="gameScreen" class="hidden" style="display:flex;flex-direction:column;gap:16px">
+    <div class="game-layout">
+
+      <!-- Mystery panel -->
+      <div class="mystery-panel">
+        <span class="panel-label" id="mysteryLabel">Mystery Object — Find it on the sky map</span>
+        <div class="image-wrap">
+          <div id="aladin-mystery"></div>
+          <div class="mystery-overlay"></div>
+          <div id="imgLoader">
+            <div class="spinner"></div>
+            <span>Loading…</span>
+          </div>
+        </div>
+
+        <div class="hint-row">
+          <button class="hint-btn" id="hintDSC" data-cost="100">DSC Image<br>−100 pts</button>
+          <button class="hint-btn" id="hintCatId" data-cost="300">Constellation<br>−300 pts</button>
+          <button class="hint-btn" id="hintName" data-cost="1000">Object Name<br>−1,000 pts</button>
+        </div>
+        <div id="hintOutput"></div>
+        <div id="dscImageHint" class="hidden">
+          <img id="dscHintImg" src="" alt="DeepSkyCorner image">
+        </div>
+      </div>
+
+      <!-- Sky map -->
+      <div class="skymap-panel">
+        <div class="map-header">
+          <span class="panel-label">Navigate the sky · Click to place your pin</span>
+          <button class="toggle-btn on" id="constToggleBtn">Constellations ✓</button>
+        </div>
+        <div id="aladin-lite-div"></div>
+        <div id="pinStatus">No pin placed — click anywhere on the sky map</div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <button class="submit-btn" id="submitBtn" disabled>Lock In Guess</button>
+    </div>
+
+    <!-- Round result (shown after each submission) -->
+    <div id="roundResultPanel" class="hidden">
+      <div class="rr-header">
+        <div class="rr-score" id="rrScore">0</div>
+        <div>
+          <div class="rr-name" id="rrName"></div>
+          <div class="rr-running" id="rrRunning"></div>
+        </div>
+      </div>
+      <div class="score-bar-wrap"><div class="score-bar" id="rrBar" style="width:0%"></div></div>
+      <div class="rr-grid">
+        <div class="rr-stat"><span class="stat-label">Distance Off</span><span class="stat-value" id="rrDistance">—</span></div>
+        <div class="rr-stat"><span class="stat-label">Time</span><span class="stat-value" id="rrTime">—</span></div>
+        <div class="rr-stat"><span class="stat-label">Dist. Penalty</span><span class="stat-value" id="rrDistPen">—</span></div>
+        <div class="rr-stat"><span class="stat-label">Time Penalty</span><span class="stat-value" id="rrTimePen">—</span></div>
+        <div class="rr-stat"><span class="stat-label">Hint Penalty</span><span class="stat-value" id="rrHintPen">—</span></div>
+        <div class="rr-stat"><span class="stat-label">Object Type</span><span class="stat-value" id="rrType">—</span></div>
+      </div>
+      <div class="rr-actions">
+        <a class="dsc-link" id="dscLearnMore" href="#" target="_blank" rel="noopener" style="display:none">Learn more on DeepSkyCorner →</a>
+        <button class="next-btn" id="nextRoundBtn">Next Object →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Final Screen ── -->
+  <section id="finalScreen" class="hidden">
+    <div class="final-header">
+      <div class="final-title">Game Complete!</div>
+      <div class="final-score-big" id="finalTotalScore">0</div>
+      <div class="final-score-max" id="finalScoreMax">/ 25,000 pts</div>
+      <div class="final-stars" id="finalStars">⭐</div>
+      <div class="final-bar-wrap"><div class="final-bar" id="finalBar" style="width:0%"></div></div>
+    </div>
+    <div class="final-rounds-grid" id="finalRoundsGrid"></div>
+    <div class="final-actions">
+      <button class="action-btn primary" id="copyResultBtn">Copy Results</button>
+      <button class="action-btn" id="playAgainBtn">Play Again</button>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Sky imagery: <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite</a> / DSS2 colour (CDS/STScI) &nbsp;·&nbsp;
+  Object data: <a href="https://simbad.cds.unistra.fr/" target="_blank" rel="noopener">SIMBAD</a> &nbsp;·&nbsp;
+  Images &amp; info: <a href="https://deepskycorner.ch" target="_blank" rel="noopener">DeepSkyCorner</a>
+</footer>
+
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const MAX_SCORE = 5000;
+const TIME_FOR_MAX_PENALTY = 120;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let dsos = [];
+let gameObjects = [];
+let currentRound = -1;
+let roundResults = [];
+let currentDSO = null;
+let guessRA = null, guessDec = null;
+let timeElapsed = 0, timerInterval = null;
+let hintPenalty = 0;
+let gamePhase = 'setup';
+
+// Aladin
+let aladinMain = null, aladinMystery = null;
+let pinCatalog = null, trueCatalog = null;
+let constOverlay = null, constNamesOverlay = null, lineOverlay = null;
+let aladinReady = false;
+let constShowing = true;
+
+// Config (from setup screen)
+let config = { count: 5, types: new Set(), magLimit: Infinity };
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const timerEl       = document.getElementById('timerDisplay');
+const progressEl    = document.getElementById('progressLabel');
+const imgLoaderEl   = document.getElementById('imgLoader');
+const pinStatusEl   = document.getElementById('pinStatus');
+const submitBtnEl   = document.getElementById('submitBtn');
+const constToggleEl = document.getElementById('constToggleBtn');
+const hintOutputEl  = document.getElementById('hintOutput');
+const hintDSCEl     = document.getElementById('hintDSC');
+const hintCatIdEl   = document.getElementById('hintCatId');
+const hintNameEl    = document.getElementById('hintName');
+const dscImageEl    = document.getElementById('dscImageHint');
+const dscHintImgEl  = document.getElementById('dscHintImg');
+const roundResultEl = document.getElementById('roundResultPanel');
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function angularDistanceDeg(ra1, dec1, ra2, dec2) {
+  const r = Math.PI / 180;
+  const cos = Math.sin(dec1*r)*Math.sin(dec2*r) + Math.cos(dec1*r)*Math.cos(dec2*r)*Math.cos((ra1-ra2)*r);
+  return Math.acos(Math.max(-1, Math.min(1, cos))) / r;
+}
+
+function formatDistance(deg) {
+  if (deg < 1/60) return `${(deg * 3600).toFixed(0)} arcsec`;
+  if (deg < 1)    return `${(deg * 60).toFixed(1)} arcmin`;
+  return `${deg.toFixed(2)}°`;
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function computeScore(distDeg, elapsed, hints) {
+  const d = distDeg;
+  let distPenalty;
+  if (d <= 1/60)    distPenalty = 0;
+  else if (d <= 1)  distPenalty = 1000 * (d * 60 - 1) / 59;
+  else if (d <= 10) distPenalty = 1000 + 2000 * (d - 1) / 9;
+  else              distPenalty = 3000;
+  const timePenalty = Math.min(elapsed, TIME_FOR_MAX_PENALTY) / TIME_FOR_MAX_PENALTY * 2000;
+  return {
+    total:       Math.max(0, Math.round(MAX_SCORE - distPenalty - timePenalty - hints)),
+    distPenalty: Math.round(distPenalty),
+    timePenalty: Math.round(timePenalty),
+  };
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Setup Screen ──────────────────────────────────────────────────────────
+function initSetupScreen() {
+  // Object type checkboxes — derive from loaded dso list
+  const types = [...new Set(dsos.map(d => d.type))].sort();
+  const grid = document.getElementById('typeGrid');
+  types.forEach(t => {
+    const label = document.createElement('label');
+    label.className = 'type-check';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = t;
+    cb.checked = true;
+    cb.addEventListener('change', updatePoolInfo);
+    const span = document.createElement('span');
+    span.textContent = t;
+    label.appendChild(cb);
+    label.appendChild(span);
+    grid.appendChild(label);
+  });
+
+  // Count buttons
+  document.querySelectorAll('.count-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      config.count = parseInt(btn.dataset.count, 10);
+      updatePoolInfo();
+    });
+  });
+
+  // Magnitude toggle + slider
+  const magEnabled = document.getElementById('magEnabled');
+  const magRow = document.getElementById('magRow');
+  const magSlider = document.getElementById('magSlider');
+  const magValue = document.getElementById('magValue');
+  magEnabled.addEventListener('change', () => {
+    magRow.style.display = magEnabled.checked ? 'flex' : 'none';
+    config.magLimit = magEnabled.checked ? parseFloat(magSlider.value) : Infinity;
+    updatePoolInfo();
+  });
+  magSlider.addEventListener('input', () => {
+    magValue.textContent = `≤ ${parseFloat(magSlider.value).toFixed(1)}`;
+    config.magLimit = parseFloat(magSlider.value);
+    updatePoolInfo();
+  });
+
+  // Start button
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  updatePoolInfo();
+}
+
+function getFilteredPool() {
+  const selectedTypes = [...document.querySelectorAll('#typeGrid input:checked')].map(cb => cb.value);
+  config.types = new Set(selectedTypes);
+  return dsos.filter(d => {
+    if (!config.types.has(d.type)) return false;
+    if (d.mag > config.magLimit) return false;
+    return true;
+  });
+}
+
+function updatePoolInfo() {
+  const pool = getFilteredPool();
+  const info = document.getElementById('poolInfo');
+  const btn = document.getElementById('startBtn');
+  if (pool.length === 0) {
+    info.textContent = 'No objects match your filters. Relax constraints to continue.';
+    info.className = 'warn';
+    btn.disabled = true;
+  } else {
+    const actual = Math.min(pool.length, config.count);
+    info.textContent = `${pool.length} objects match · game will use ${actual}`;
+    info.className = '';
+    btn.disabled = false;
+  }
+}
+
+// ── Game start ─────────────────────────────────────────────────────────────
+async function startGame() {
+  const pool = getFilteredPool();
+  if (!pool.length) return;
+  gameObjects = shuffle(pool).slice(0, config.count);
+  roundResults = Array(gameObjects.length).fill(null);
+  currentRound = -1;
+
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  document.getElementById('gameScreen').style.display = 'flex';
+
+  if (!aladinReady) {
+    await initAladin(gameObjects[0]);
+    aladinReady = true;
+  }
+  nextRound();
+}
+
+// ── Round management ───────────────────────────────────────────────────────
+function nextRound() {
+  currentRound++;
+  if (currentRound >= gameObjects.length) {
+    showFinalScreen();
+    return;
+  }
+  currentDSO = gameObjects[currentRound];
+
+  // Reset per-round state
+  guessRA = null;
+  guessDec = null;
+  hintPenalty = 0;
+  gamePhase = 'playing';
+
+  // Reset UI
+  roundResultEl.classList.add('hidden');
+  submitBtnEl.disabled = true;
+  pinStatusEl.textContent = 'No pin placed — click anywhere on the sky map';
+  pinStatusEl.classList.remove('has-pin');
+  resetHints();
+
+  // Progress display
+  progressEl.classList.remove('hidden');
+  progressEl.textContent = `Round ${currentRound + 1} / ${gameObjects.length}`;
+  document.getElementById('mysteryLabel').textContent =
+    `Round ${currentRound + 1} of ${gameObjects.length} — Find this object`;
+
+  // Reset & update Aladin
+  if (pinCatalog)  pinCatalog.removeAll();
+  if (trueCatalog) trueCatalog.removeAll();
+  if (lineOverlay) { try { aladinMain.removeLayer(lineOverlay); } catch(e) {} lineOverlay = null; }
+  aladinMain.gotoRaDec(180, 0);
+  aladinMain.setFoV(150);
+  updateMystery(currentDSO);
+
+  // Timer
+  resetTimer();
+  startTimer();
+}
+
+function submitGuess() {
+  if (gamePhase !== 'playing' || guessRA === null) return;
+  gamePhase = 'result';
+  stopTimer();
+  submitBtnEl.disabled = true;
+  hintDSCEl.disabled = true;
+  hintCatIdEl.disabled = true;
+  hintNameEl.disabled = true;
+
+  const dist   = angularDistanceDeg(currentDSO.ra, currentDSO.dec, guessRA, guessDec);
+  const scores = computeScore(dist, timeElapsed, hintPenalty);
+  roundResults[currentRound] = { dso: currentDSO, dist, score: scores, elapsed: timeElapsed, hintPenalty };
+
+  // Draw true position and line
+  trueCatalog.addSources([A.source(currentDSO.ra, currentDSO.dec, { name: currentDSO.name })]);
+  lineOverlay = A.graphicOverlay({ color: '#fbbf24', lineWidth: 2 });
+  aladinMain.addOverlay(lineOverlay);
+  lineOverlay.add(A.polyline([[guessRA, guessDec], [currentDSO.ra, currentDSO.dec]]));
+
+  // Zoom to show both points
+  let dRA = currentDSO.ra - guessRA;
+  if (dRA > 180) dRA -= 360;
+  if (dRA < -180) dRA += 360;
+  const midRA  = (guessRA + dRA / 2 + 360) % 360;
+  const midDec = (guessDec + currentDSO.dec) / 2;
+  const span   = Math.max(dist * 2.5, currentDSO.fov * 3, 3);
+  aladinMain.gotoRaDec(midRA, midDec);
+  aladinMain.setFoV(span);
+
+  showRoundResult(dist, scores);
+}
+
+function showRoundResult(dist, scores) {
+  const runningTotal = roundResults.reduce((s, r) => s + (r ? r.score.total : 0), 0);
+  const maxSoFar = (currentRound + 1) * MAX_SCORE;
+
+  document.getElementById('rrScore').textContent    = scores.total.toLocaleString();
+  document.getElementById('rrName').textContent     = `${currentDSO.id} · ${currentDSO.name}`;
+  document.getElementById('rrRunning').textContent  = `Running total: ${runningTotal.toLocaleString()} / ${maxSoFar.toLocaleString()}`;
+  document.getElementById('rrDistance').textContent = formatDistance(dist);
+  document.getElementById('rrTime').textContent     = formatTime(timeElapsed);
+  document.getElementById('rrDistPen').textContent  = `−${scores.distPenalty}`;
+  document.getElementById('rrTimePen').textContent  = `−${scores.timePenalty}`;
+  document.getElementById('rrHintPen').textContent  = hintPenalty ? `−${hintPenalty}` : '0';
+  document.getElementById('rrType').textContent     = currentDSO.type;
+
+  requestAnimationFrame(() => {
+    document.getElementById('rrBar').style.width = `${(scores.total / MAX_SCORE) * 100}%`;
+  });
+
+  const learnLink = document.getElementById('dscLearnMore');
+  if (currentDSO.dsc_slug) {
+    learnLink.href = `https://deepskycorner.ch/obj/${currentDSO.dsc_slug}.en.php`;
+    learnLink.style.display = '';
+  } else {
+    learnLink.style.display = 'none';
+  }
+
+  const isLast = currentRound >= gameObjects.length - 1;
+  document.getElementById('nextRoundBtn').textContent = isLast ? 'See Final Results →' : 'Next Object →';
+
+  roundResultEl.classList.remove('hidden');
+  roundResultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Final Screen ──────────────────────────────────────────────────────────
+function showFinalScreen() {
+  gamePhase = 'final';
+  document.getElementById('gameScreen').classList.add('hidden');
+  const finalScreen = document.getElementById('finalScreen');
+  finalScreen.classList.remove('hidden');
+
+  const totalScore = roundResults.reduce((s, r) => s + (r ? r.score.total : 0), 0);
+  const maxScore   = gameObjects.length * MAX_SCORE;
+  const pct        = totalScore / maxScore;
+  const stars      = pct >= 0.9 ? '⭐⭐⭐' : pct >= 0.6 ? '⭐⭐' : '⭐';
+
+  document.getElementById('finalTotalScore').textContent = totalScore.toLocaleString();
+  document.getElementById('finalScoreMax').textContent   = `/ ${maxScore.toLocaleString()} pts`;
+  document.getElementById('finalStars').textContent      = stars;
+  requestAnimationFrame(() => {
+    document.getElementById('finalBar').style.width = `${pct * 100}%`;
+  });
+
+  // Build round cards
+  const grid = document.getElementById('finalRoundsGrid');
+  grid.innerHTML = '';
+  roundResults.forEach((r, i) => {
+    if (!r) return;
+    const tileUrl = r.dso.dsc_slug ? `https://deepskycorner.ch/pic/tiles/${r.dso.dsc_slug}_icon.webp` : null;
+    const dscUrl  = r.dso.dsc_slug ? `https://deepskycorner.ch/obj/${r.dso.dsc_slug}.en.php` : null;
+
+    const card = document.createElement('div');
+    card.className = 'final-card';
+    card.innerHTML = `
+      ${tileUrl
+        ? `<img class="final-card-img" src="${tileUrl}" alt="${r.dso.name}" onerror="this.outerHTML='<div class=final-card-img-placeholder>No image</div>'">`
+        : '<div class="final-card-img-placeholder">No image</div>'
+      }
+      <div class="final-card-body">
+        <span class="final-card-round">Round ${i + 1}</span>
+        <div class="final-card-name">${r.dso.name}</div>
+        <div class="final-card-id">${r.dso.id} · ${r.dso.type}</div>
+        <div class="final-card-score">${r.score.total.toLocaleString()} pts</div>
+        <div class="final-card-dist">${formatDistance(r.dist)} off · ${formatTime(r.elapsed)}</div>
+        ${dscUrl ? `<a class="final-card-link" href="${dscUrl}" target="_blank" rel="noopener">Learn more →</a>` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Wire action buttons
+  document.getElementById('copyResultBtn').onclick = () => {
+    const lines = ['DeepSkyGuessr', `${stars} ${totalScore.toLocaleString()} / ${maxScore.toLocaleString()} pts`, ''];
+    roundResults.forEach((r, i) => {
+      if (r) lines.push(`${i+1}. ${r.dso.name}  ${r.score.total.toLocaleString()} pts  (${formatDistance(r.dist)})`);
+    });
+    lines.push('', 'https://dominicsamra.uk/DeepSkyGuessr');
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      const btn = document.getElementById('copyResultBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy Results'; }, 1500);
+    });
+  };
+  document.getElementById('playAgainBtn').onclick = () => {
+    finalScreen.classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+    progressEl.classList.add('hidden');
+    resetTimer();
+  };
+}
+
+// ── Aladin init ────────────────────────────────────────────────────────────
+async function initAladin(dso) {
+  return new Promise(resolve => {
+    A.init.then(() => {
+      aladinMystery = A.aladin('#aladin-mystery', {
+        survey: 'CDS/P/DSS2/color',
+        fov: dso.fov * 1.15,
+        target: `${dso.ra} ${dso.dec}`,
+        cooFrame: 'J2000',
+        showReticle: false,
+        showZoomControl: false,
+        showFullscreenControl: false,
+        showFrame: false,
+        showFov: true,
+        showCooLocation: false,
+        showProjectionControl: false,
+        showContextMenu: false,
+        showLayerControl: true,
+        showGotoControl: false,
+        showSimbadPointerControl: false,
+        showShareControl: false,
+        showStatusBar: false,
+      });
+      setTimeout(() => imgLoaderEl.classList.add('hidden'), 3500);
+
+      aladinMain = A.aladin('#aladin-lite-div', {
+        survey: 'CDS/P/DSS2/color',
+        fov: 150,
+        target: '180 0',
+        cooFrame: 'J2000',
+        projection: 'AIT',
+        showReticle: false,
+        showZoomControl: true,
+        showFullscreenControl: false,
+        showFrame: false,
+        showCooLocation: false,
+        showCooGrid: false,
+        showContextMenu: false,
+      });
+
+      pinCatalog = A.catalog({ name: 'Guess', color: '#f43f5e', shape: 'cross', sourceSize: 26 });
+      aladinMain.addCatalog(pinCatalog);
+      trueCatalog = A.catalog({ name: 'Answer', color: '#fbbf24', shape: 'circle', sourceSize: 28 });
+      aladinMain.addCatalog(trueCatalog);
+
+      // Click to place pin
+      const mapDiv = document.getElementById('aladin-lite-div');
+      mapDiv.addEventListener('click', e => {
+        if (gamePhase !== 'playing') return;
+        const rect   = mapDiv.getBoundingClientRect();
+        const coords = aladinMain.pix2world(e.clientX - rect.left, e.clientY - rect.top);
+        if (coords && !isNaN(coords[0])) placePin(coords[0], coords[1]);
+      });
+
+      // Constellation toggle
+      constToggleEl.addEventListener('click', toggleConstellations);
+      submitBtnEl.addEventListener('click', submitGuess);
+      document.getElementById('nextRoundBtn').addEventListener('click', nextRound);
+
+      loadConstellationOverlay();
+      resolve();
+    });
+  });
+}
+
+function updateMystery(dso) {
+  imgLoaderEl.classList.remove('hidden');
+  aladinMystery.gotoRaDec(dso.ra, dso.dec);
+  aladinMystery.setFoV(dso.fov * 1.15);
+  aladinMystery.setImageSurvey('CDS/P/DSS2/color');
+  setTimeout(() => imgLoaderEl.classList.add('hidden'), 3500);
+}
+
+// ── Constellation overlay ─────────────────────────────────────────────────
+function toggleConstellations() {
+  constShowing = !constShowing;
+  constToggleEl.textContent = constShowing ? 'Constellations ✓' : 'Constellations';
+  constToggleEl.classList.toggle('on', constShowing);
+  if (constOverlay) constShowing ? constOverlay.show() : constOverlay.hide();
+  if (constNamesOverlay) constShowing ? constNamesOverlay.show() : constNamesOverlay.hide();
+}
+
+async function loadConstellationOverlay() {
+  try {
+    const res  = await fetch('https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.lines.json');
+    const data = await res.json();
+    constOverlay = A.graphicOverlay({ color: 'rgba(130, 170, 255, 0.5)', lineWidth: 1 });
+    aladinMain.addOverlay(constOverlay);
+    data.features.forEach(feat => {
+      feat.geometry.coordinates.forEach(lineStr => constOverlay.add(A.polyline(lineStr)));
+    });
+  } catch (e) {
+    console.warn('Constellation lines failed:', e);
+  }
+
+  // Constellation names from centers
+  try {
+    const res2  = await fetch('https://raw.githubusercontent.com/ofrohn/d3-celestial/master/data/constellations.json');
+    const data2 = await res2.json();
+    constNamesOverlay = A.catalog({
+      name: 'Constellation Names',
+      color: 'rgba(130,170,255,0.65)',
+      displayLabel: true,
+      labelColumn: 'name',
+      labelFont: '11px Space Mono, monospace',
+      sourceSize: 0,
+    });
+    const sources = [];
+    data2.features.forEach(feat => {
+      if (!feat.geometry) return;
+      const coords = feat.geometry.type === 'MultiPoint'
+        ? feat.geometry.coordinates[0]
+        : feat.geometry.coordinates;
+      if (!coords) return;
+      const [ra, dec] = Array.isArray(coords[0]) ? coords[0] : coords;
+      sources.push(A.source(ra, dec, { name: feat.properties.name || feat.properties.id || '' }));
+    });
+    constNamesOverlay.addSources(sources);
+    aladinMain.addCatalog(constNamesOverlay);
+  } catch (e) {
+    console.warn('Constellation names failed:', e);
+  }
+}
+
+// ── Pin placement ─────────────────────────────────────────────────────────
+function placePin(ra, dec) {
+  guessRA  = ra;
+  guessDec = dec;
+  pinCatalog.removeAll();
+  pinCatalog.addSources([A.source(ra, dec, { name: 'Your guess' })]);
+  pinStatusEl.textContent = `Pin at RA ${ra.toFixed(2)}°  Dec ${dec >= 0 ? '+' : ''}${dec.toFixed(2)}°`;
+  pinStatusEl.classList.add('has-pin');
+  submitBtnEl.disabled = false;
+}
+
+// ── Hints ─────────────────────────────────────────────────────────────────
+function setupHints() {
+  hintDSCEl.addEventListener('click', () => {
+    if (hintDSCEl.classList.contains('used') || gamePhase !== 'playing') return;
+    hintDSCEl.classList.add('used');
+    hintDSCEl.disabled = true;
+    const cost = parseInt(hintDSCEl.dataset.cost, 10);
+    hintPenalty += cost;
+    if (currentDSO.dsc_slug) {
+      dscHintImgEl.src = `https://deepskycorner.ch/pic/tiles/${currentDSO.dsc_slug}_icon.webp`;
+      dscImageEl.classList.remove('hidden');
+      appendHint(`DeepSkyCorner image shown (−${cost} pts)`);
+    } else {
+      appendHint(`No image available (−${cost} pts)`);
+    }
+  });
+
+  hintCatIdEl.addEventListener('click', () => {
+    if (hintCatIdEl.classList.contains('used') || gamePhase !== 'playing') return;
+    hintCatIdEl.classList.add('used');
+    hintCatIdEl.disabled = true;
+    const cost = parseInt(hintCatIdEl.dataset.cost, 10);
+    hintPenalty += cost;
+    appendHint(`Constellation: ${currentDSO.constellation}  (−${cost} pts)`);
+  });
+
+  hintNameEl.addEventListener('click', () => {
+    if (hintNameEl.classList.contains('used') || gamePhase !== 'playing') return;
+    hintNameEl.classList.add('used');
+    hintNameEl.disabled = true;
+    const cost = parseInt(hintNameEl.dataset.cost, 10);
+    hintPenalty += cost;
+    appendHint(`Name: ${currentDSO.name}  (−${cost} pts)`);
+  });
+}
+
+function appendHint(text) {
+  hintOutputEl.textContent = hintOutputEl.textContent
+    ? hintOutputEl.textContent + '   ' + text
+    : text;
+}
+
+function resetHints() {
+  hintDSCEl.classList.remove('used');
+  hintCatIdEl.classList.remove('used');
+  hintNameEl.classList.remove('used');
+  hintDSCEl.disabled = false;
+  hintCatIdEl.disabled = false;
+  hintNameEl.disabled = false;
+  hintOutputEl.textContent = '';
+  dscImageEl.classList.add('hidden');
+  dscHintImgEl.src = '';
+  // Disable DSC hint if no slug
+  if (!currentDSO.dsc_slug) {
+    hintDSCEl.disabled = true;
+    hintDSCEl.title = 'No image available for this object';
+  }
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────
+function startTimer() {
+  timerEl.classList.add('running');
+  timerInterval = setInterval(() => {
+    timeElapsed += 1;
+    timerEl.textContent = formatTime(timeElapsed);
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerEl.classList.remove('running');
+}
+
+function resetTimer() {
+  stopTimer();
+  timeElapsed = 0;
+  timerEl.textContent = '0:00';
+}
+
+// ── Entry point ────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('./dso.json', { cache: 'no-store' });
+    const payload = await res.json();
+    dsos = payload.objects || [];
+  } catch (_) {
+    document.getElementById('setupScreen').innerHTML = '<p style="color:var(--red);font-family:var(--font-mono)">Failed to load DSO data.</p>';
+    return;
+  }
+  initSetupScreen();
+  setupHints();
+}
+
+init();
+</script>
 </body>
 </html>
